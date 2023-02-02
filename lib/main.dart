@@ -1,3 +1,4 @@
+import 'package:club_app_v2/studentScreen.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:flutter/widgets.dart';
@@ -5,6 +6,8 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'dart:io';
 import 'dbhelper.dart';
+import 'staffScreen.dart';
+import 'staffScreen.dart';
 
 void main() async {
   runApp(const ClubApp());
@@ -64,20 +67,37 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _staffPasswordController =
       TextEditingController();
 
+  Student exampleStudent = Student(
+      osis: '220',
+      name: 'Joe',
+      email: 'koob',
+      club: 'Astrology',
+      password: 'banana');
+
+  Club exampleClub = Club(
+      name: 'Astrology',
+      meeting: 'Thursday',
+      room: '301',
+      advisor: 'Ms. Qiu',
+      aemail: 'qiubx',
+      pres: '220',
+      vp: '111');
+
   @override
   void initState() {
     super.initState();
   }
 
+  void _insertStudent(Student s) async {
+    final id = await dbHelper.addStudent(s);
+  }
+
+  void _insertClub(Club c) async {
+    final id = await dbHelper.addClub(c);
+  }
+
   final dbHelper = DatabaseHelper.instance;
-  List<Student> students = [
-    Student(
-        osis: '222',
-        name: 'bob',
-        email: 'koob',
-        club: 'none',
-        password: 'banana'),
-  ];
+  List<Student> students = [];
   List<Club> clubs = [];
 
   final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
@@ -159,9 +179,27 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: ElevatedButton(
                               child: const Text('Login'),
                               onPressed: () {
-                                setState(() {
-                                  _queryAllStudents();
-                                });
+                                _queryAllStudents();
+                                if (matchStudentAccount(
+                                    _studentOSISController.text,
+                                    _studentPasswordController.text)) {
+                                  Student s =
+                                      findStudent(_studentOSISController.text);
+                                  _studentOSISController.clear();
+                                  _studentPasswordController.clear();
+                                  Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => StudentScreen(
+                                            title:
+                                                'Hello, ${s.name.toString()}',
+                                            student: s),
+                                      ));
+                                } else {
+                                  _studentOSISController.clear();
+                                  _studentPasswordController.clear();
+                                  Navigator.pop(context);
+                                }
                               }),
                         ),
                         Container(
@@ -184,6 +222,15 @@ class _LoginScreenState extends State<LoginScreen> {
                             },
                           ),
                         ),
+                        TextButton(
+                            onPressed: (() {
+                              setState(() {
+                                _insertClub(exampleClub);
+                                _insertStudent(exampleStudent);
+                              });
+                            }),
+                            child: const Text(
+                                'Click this to use example club and student'))
                       ],
                     )),
               ),
@@ -237,7 +284,23 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: ElevatedButton(
                               child: const Text('Login'),
                               onPressed: () {
-                                setState(() {});
+                                if (checkStaff(_staffOSISController.text,
+                                    _staffPasswordController.text)) {
+                                  Student f =
+                                      findStudent(_staffOSISController.text);
+                                  Club g = findClub(_staffOSISController.text);
+                                  _staffOSISController.clear();
+                                  _staffPasswordController.clear();
+                                  Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: ((context) => StaffScreen(
+                                              title: f.name, staff: g))));
+                                } else {
+                                  _staffOSISController.clear();
+                                  _staffPasswordController.clear();
+                                  Navigator.pop(context);
+                                }
                               }),
                         ),
                         Container(
@@ -249,10 +312,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           ),
         ));
-  }
-
-  void _insertStudent(Student s) async {
-    final id = await dbHelper.addStudent(s);
   }
 
   void _queryAllStudents() async {
@@ -273,6 +332,62 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _deleteStudent(String osis, String club) async {
     final rowsdeleted = await dbHelper.removeStudent(osis, club);
+  }
+
+  bool matchStudentAccount(String osis, String password) {
+    for (int x = 0; x < students.length; x++) {
+      if ((students[x].osis == osis) && (students[x].password == password)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  Student findStudent(String osis) {
+    _queryAllStudents();
+    for (int x = 0; x < students.length; x++) {
+      if (students[x].osis == osis) {
+        return students[x];
+      }
+    }
+    return Student(
+        osis: '0000',
+        name: '0000',
+        email: '0000',
+        club: '0000',
+        password: '0000');
+  }
+
+  Club findClub(String osis) {
+    _queryAllClubs();
+    for (int x = 0; x < clubs.length; x++) {
+      if (clubs[x].pres == osis || clubs[x].vp == osis) {
+        return clubs[x];
+      }
+    }
+    return Club(
+        name: '0000',
+        meeting: '0000',
+        room: '0000',
+        advisor: '0000',
+        aemail: '0000',
+        pres: '0000',
+        vp: '0000');
+  }
+
+  bool checkStaff(String osis, String password) {
+    _queryAllClubs();
+    _queryAllStudents();
+    for (int x = 0; x < clubs.length; x++) {
+      if (osis == clubs[x].vp || osis == clubs[x].pres) {
+        for (int y = 0; y < students.length; y++) {
+          if (password == students[y].password && osis == students[y].osis) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
   }
 
   final TextEditingController _osisController = TextEditingController();
